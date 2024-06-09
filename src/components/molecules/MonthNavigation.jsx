@@ -1,5 +1,5 @@
 import styled from "styled-components";
-import { Section } from "../pages/Home";
+import { Section } from "../../pages/Home.jsx";
 
 const MonthWrapper = styled.div`
   display: flex;

@@ -1,9 +1,10 @@
-import { Section } from "../pages/Home";
+import { Section } from "../../pages/Home.jsx";
 import styled from "styled-components";
 import { useState } from "react";
 import { v4 as uuidv4 } from "uuid";
-import { useDispatch } from "react-redux";
-import { addExpense } from "../redux/slices/expensesSlice";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import axiosJsonServerInstance from "../../lib/api/axiosJsonServer.js";
+import useAuthStore from "../../store/authStore.js";
 
 const InputRow = styled.div`
   display: flex;
@@ -47,14 +48,27 @@ const AddButton = styled.button`
   }
 `;
 
+const addExpense = async (newExpense) => {
+  const { data } = await axiosJsonServerInstance.post("/expenses", newExpense);
+  return data;
+};
+
 export default function CreateExpense({ month }) {
-  const dispatch = useDispatch();
+  const queryClient = useQueryClient();
+  const { user } = useAuthStore();
   const [newDate, setNewDate] = useState(
-    `2024-${String(month).padStart(2, "0")}-01`
+    `2024-${String(month).padStart(2, "0")}-01`,
   );
   const [newItem, setNewItem] = useState("");
   const [newAmount, setNewAmount] = useState("");
   const [newDescription, setNewDescription] = useState("");
+
+  const mutation = useMutation({
+    mutationFn: addExpense,
+    onSuccess: () => {
+      queryClient.invalidateQueries(["expenses"]);
+    },
+  });
 
   const handleAddExpense = () => {
     const datePattern = /^\d{4}-\d{2}-\d{2}$/;
@@ -76,9 +90,10 @@ export default function CreateExpense({ month }) {
       item: newItem,
       amount: parsedAmount,
       description: newDescription,
+      createdBy: user?.id || "Unknown",
     };
 
-    dispatch(addExpense(newExpense));
+    mutation.mutate(newExpense);
 
     setNewDate(`2024-${String(month).padStart(2, "0")}-01`);
     setNewItem("");
