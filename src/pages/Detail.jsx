@@ -1,8 +1,9 @@
-import { useState } from "react";
+// src/pages/Detail.jsx
+import { useState, useEffect } from "react";
 import styled from "styled-components";
 import { useNavigate, useParams } from "react-router-dom";
-import { useSelector, useDispatch } from "react-redux";
-import { editExpense, deleteExpense } from "../redux/slices/expensesSlice";
+import { useQueryClient, useMutation, useQuery } from "@tanstack/react-query";
+import axiosJsonServerInstance from "../lib/api/axiosJsonServer";
 
 const Container = styled.div`
   max-width: 800px;
@@ -59,18 +60,66 @@ const BackButton = styled(Button)`
   }
 `;
 
+const fetchExpense = async ({ queryKey }) => {
+  const [_, id] = queryKey;
+  const { data } = await axiosJsonServerInstance.get(`/expenses/${id}`);
+  return data;
+};
+
+const editExpense = async (updatedExpense) => {
+  const { id, ...rest } = updatedExpense;
+  const { data } = await axiosJsonServerInstance.put(`/expenses/${id}`, rest);
+  return data;
+};
+
+const deleteExpense = async (id) => {
+  const { data } = await axiosJsonServerInstance.delete(`/expenses/${id}`);
+  return data;
+};
+
 export default function Detail() {
   const navigate = useNavigate();
-  const dispatch = useDispatch();
   const { id } = useParams();
-  const expenses = useSelector((state) => state.expenses);
+  const queryClient = useQueryClient();
 
-  const selectedExpense = expenses.find((element) => element.id === id);
+  const {
+    data: selectedExpense,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ["expense", id],
+    queryFn: fetchExpense,
+  });
 
-  const [date, setDate] = useState(selectedExpense.date);
-  const [item, setItem] = useState(selectedExpense.item);
-  const [amount, setAmount] = useState(selectedExpense.amount);
-  const [description, setDescription] = useState(selectedExpense.description);
+  const mutationEdit = useMutation({
+    mutationFn: editExpense,
+    onSuccess: () => {
+      queryClient.invalidateQueries(["expenses"]);
+      navigate("/");
+    },
+  });
+
+  const mutationDelete = useMutation({
+    mutationFn: deleteExpense,
+    onSuccess: () => {
+      queryClient.invalidateQueries(["expenses"]);
+      navigate("/");
+    },
+  });
+
+  const [date, setDate] = useState("");
+  const [item, setItem] = useState("");
+  const [amount, setAmount] = useState("");
+  const [description, setDescription] = useState("");
+
+  useEffect(() => {
+    if (selectedExpense) {
+      setDate(selectedExpense.date);
+      setItem(selectedExpense.item);
+      setAmount(selectedExpense.amount.toString());
+      setDescription(selectedExpense.description);
+    }
+  }, [selectedExpense]);
 
   const handleEdit = () => {
     const datePattern = /^\d{4}-\d{2}-\d{2}$/;
@@ -78,7 +127,7 @@ export default function Detail() {
       alert("날짜를 YYYY-MM-DD 형식으로 입력해주세요.");
       return;
     }
-    if (!item || amount <= 0) {
+    if (!item || parseInt(amount, 10) <= 0) {
       alert("유효한 항목과 금액을 입력해주세요.");
       return;
     }
@@ -87,18 +136,19 @@ export default function Detail() {
       id: id,
       date: date,
       item: item,
-      amount: amount,
+      amount: parseInt(amount, 10),
       description: description,
     };
 
-    dispatch(editExpense(newExpense));
-    navigate("/");
+    mutationEdit.mutate(newExpense);
   };
 
   const handleDelete = () => {
-    dispatch(deleteExpense({ id }));
-    navigate("/");
+    mutationDelete.mutate(id);
   };
+
+  if (isLoading) return <div>Loading...</div>;
+  if (error) return <div>Error loading data</div>;
 
   return (
     <Container>

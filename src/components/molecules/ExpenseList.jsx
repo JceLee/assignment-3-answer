@@ -1,6 +1,9 @@
-import { Section } from "../pages/Home";
+import { Section } from "../../pages/Home.jsx";
 import styled from "styled-components";
 import { useNavigate } from "react-router-dom";
+import useAuthStore from "../../store/authStore";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const NoExpenseMessage = styled.div`
   text-align: center;
@@ -70,10 +73,22 @@ const ExpenseDetails = styled.div`
 `;
 
 export default function ExpenseList({ expenses }) {
+  const { user } = useAuthStore();
   const navigate = useNavigate();
+
+  const handleItemClick = (expense) => {
+    console.log(user);
+    console.log(expense.createdBy);
+    if (user.id === expense.createdBy) {
+      navigate(`/detail/${expense.id}`);
+    } else {
+      toast.error("본인의 지출만 수정할 수 있습니다.");
+    }
+  };
 
   return (
     <Section>
+      <ToastContainer />
       {expenses.length === 0 ? (
         <NoExpenseMessage>지출이 없습니다.</NoExpenseMessage>
       ) : (
@@ -81,13 +96,11 @@ export default function ExpenseList({ expenses }) {
           {expenses.map((expense) => (
             <ExpenseItem
               key={expense.id}
-              onClick={() => {
-                navigate(`/detail/${expense.id}`);
-              }}
+              onClick={() => handleItemClick(expense)}
             >
               <ExpenseDetails>
                 <span>{expense.date}</span>
-                <span>{`${expense.item} - ${expense.description}`}</span>
+                <span>{`${expense.item} - ${expense.description} (by ${expense.createdBy})`}</span>
               </ExpenseDetails>
               <span>{expense.amount.toLocaleString()} 원</span>
             </ExpenseItem>

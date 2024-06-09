@@ -1,4 +1,7 @@
+// src/components/DashBoard.jsx
+import { useState } from "react";
 import styled from "styled-components";
+import Dropdown from "../atom/Dropdown.jsx";
 
 const Container = styled.div`
   padding: 20px;
@@ -54,12 +57,14 @@ const getColor = (index) => {
 };
 
 export default function DashBoard({ month, filteredExpenses }) {
+  const [groupBy, setGroupBy] = useState("category");
+
   const totalAmount = filteredExpenses.reduce(
     (sum, expense) => sum + expense.amount,
-    0
+    0,
   );
 
-  const itemizedTotals = filteredExpenses.reduce((acc, expense) => {
+  const groupByCategory = filteredExpenses.reduce((acc, expense) => {
     if (acc[expense.item]) {
       acc[expense.item] += expense.amount;
     } else {
@@ -68,9 +73,18 @@ export default function DashBoard({ month, filteredExpenses }) {
     return acc;
   }, {});
 
-  const sortedItems = Object.entries(itemizedTotals).sort(
-    (a, b) => b[1] - a[1]
-  );
+  const groupByUser = filteredExpenses.reduce((acc, expense) => {
+    if (acc[expense.createdBy]) {
+      acc[expense.createdBy] += expense.amount;
+    } else {
+      acc[expense.createdBy] = expense.amount;
+    }
+    return acc;
+  }, {});
+
+  const data = groupBy === "category" ? groupByCategory : groupByUser;
+
+  const sortedItems = Object.entries(data).sort((a, b) => b[1] - a[1]);
 
   const top4Items = sortedItems.slice(0, 4);
   const otherItemsTotal = sortedItems
@@ -80,6 +94,10 @@ export default function DashBoard({ month, filteredExpenses }) {
   return (
     <Container>
       {month}월 총 지출: {totalAmount.toLocaleString()} 원
+      <Dropdown value={groupBy} onChange={(e) => setGroupBy(e.target.value)}>
+        <option value="category">카테고리별</option>
+        <option value="user">사용자별</option>
+      </Dropdown>
       <BarContainer>
         {top4Items.map(([item, amount], index) => {
           const percentage = ((amount / totalAmount) * 100).toFixed(2);
