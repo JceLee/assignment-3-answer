@@ -13,6 +13,7 @@ const Navbar = styled.nav`
   width: calc(100% - 2rem);
   top: 0;
   z-index: 1000;
+  max-width: 1240px;
 `;
 
 const NavItems = styled.div`
